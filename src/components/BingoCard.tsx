@@ -67,7 +67,7 @@ const BingoCard: React.FC = () => {
             <SelectItem value="aroundTheWorld">Around the World</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={clearPattern}>Clear Pattern</Button>
+        <Button onClick={clearPattern} className="font-bold">Clear Pattern</Button>
       </div>
     </div>
   )
