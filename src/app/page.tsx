@@ -1,101 +1,160 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { motion } from "framer-motion"
+import BingoCard from "@/components/BingoCard"
+
+export default function BingoHelper() {
+  const [drawnBalls, setDrawnBalls] = useState<number[]>([])
+  const [currentBall, setCurrentBall] = useState<number | null>(null)
+  const [isDrawing, setIsDrawing] = useState(false)
+
+  // Generate a new ball that hasn't been drawn yet
+  const drawNewBall = () => {
+    if (drawnBalls.length === 75) {
+      alert("All balls have been drawn!")
+      return
+    }
+
+    setIsDrawing(true)
+
+    // Simulate the drawing animation
+    let counter = 0
+    const interval = setInterval(() => {
+      // Generate a random ball between 1-75 that hasn't been drawn yet
+      let randomBall
+      do {
+        randomBall = Math.floor(Math.random() * 75) + 1
+      } while (drawnBalls.includes(randomBall))
+
+      setCurrentBall(randomBall)
+      counter++
+
+      if (counter > 10) {
+        clearInterval(interval)
+        setIsDrawing(false)
+        setDrawnBalls((prev) => [...prev, randomBall])
+      }
+    }, 100)
+  }
+
+  // Get the letter (B, I, N, G, O) based on the ball number
+  const getBingoLetter = (number: number) => {
+    if (number <= 15) return "B"
+    if (number <= 30) return "I"
+    if (number <= 45) return "N"
+    if (number <= 60) return "G"
+    return "O"
+  }
+
+  // Get color based on the letter
+  const getBallColor = (letter: string) => {
+    switch (letter) {
+      case "B":
+        return "bg-red-500"
+      case "I":
+        return "bg-blue-500"
+      case "N":
+        return "bg-green-500"
+      case "G":
+        return "bg-yellow-500"
+      case "O":
+        return "bg-purple-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
+  const handleReset = () => {
+    setDrawnBalls([])
+    setCurrentBall(null)
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-row items-center justify-between mb-8">
+        <h1 className="text-4xl font-bold text-center">LOT 25 BINGO</h1>
+        <h2 className="text-2xl font-semibold">Drawn Balls: {drawnBalls.length}/75</h2>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Left side - Draw button and current ball */}
+        <div className="flex flex-col items-center lg:w-1/3">
+          { drawnBalls.length !== 75 && (
+            <Button
+              size="lg"
+              onClick={drawNewBall}
+              disabled={isDrawing || drawnBalls.length === 75}
+              className="mb-8 text-xl px-10 py-8 w-full max-w-xs font-bold"
+            >
+              {isDrawing ? "Drawing..." : "Draw Ball"}
+            </Button>
+          )}
+
+          { drawnBalls.length === 75 && (
+            <Button
+              size="lg"
+              onClick={handleReset}
+              className="mb-8 text-xl px-10 py-8 w-full max-w-xs font-bold"
+            >
+              Reset
+            </Button>
+          )}
+
+          {currentBall ? (
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 300 }}
+              className="relative"
+            >
+              <div
+                className={`${getBallColor(getBingoLetter(currentBall))} w-[310px] h-[310px] rounded-full flex items-center justify-center shadow-lg`}
+              >
+                <div className="bg-white w-[260px] h-[260px] rounded-full flex flex-col items-center justify-center">
+                  <span className="text-8xl font-bold">{getBingoLetter(currentBall)}</span>
+                  <span className="text-9xl font-bold">{currentBall}</span>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="w-[310px] h-[310px] rounded-full border-12 border-gray-300 flex items-center justify-center">
+              <span className="text-gray-400 text-xl">No ball drawn</span>
+            </div>
+          )}
+          <BingoCard />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Right side - Drawn balls rack */}
+        <div className="lg:w-2/3">
+          <Card className="p-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+              {["B", "I", "N", "G", "O"].map((letter) => (
+                <div key={letter} className="flex flex-col">
+                  <h3 className="font-bold text-center mb-2 text-2xl">{letter}</h3>
+                  <div className="space-y-2">
+                    {drawnBalls
+                      .filter((ball) => getBingoLetter(ball) === letter)
+                      .sort((a, b) => a - b)
+                      .map((ball) => (
+                        <div
+                          key={ball}
+                          className={`${getBallColor(getBingoLetter(ball))} w-12 h-12 rounded-full flex items-center justify-center mx-auto`}
+                        >
+                          <div className="bg-white w-11 h-11 rounded-full flex items-center justify-center">
+                            <span className="text-2xl font-bold">{ball}</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
