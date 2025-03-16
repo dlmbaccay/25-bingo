@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { motion } from "framer-motion"
 import BingoCard from "@/components/BingoCard"
+import { RefreshCw } from "lucide-react"
 
 export default function BingoHelper() {
   const [drawnBalls, setDrawnBalls] = useState<number[]>([])
@@ -100,7 +101,18 @@ export default function BingoHelper() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-row items-center justify-between mb-8">
         <h1 className="text-4xl font-bold text-center">LOT 25 BINGO</h1>
-        <h2 className="text-2xl font-semibold">Drawn Balls: {drawnBalls.length}/75</h2>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleReset}
+            className="opacity-30 hover:opacity-100 transition-opacity"
+            title="Hard Reset"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <h2 className="text-2xl font-semibold">Drawn Balls: {drawnBalls.length}/75</h2>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
