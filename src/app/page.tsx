@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { motion } from "framer-motion"
@@ -10,6 +10,28 @@ export default function BingoHelper() {
   const [drawnBalls, setDrawnBalls] = useState<number[]>([])
   const [currentBall, setCurrentBall] = useState<number | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
+
+  // Load saved state from localStorage on component mount
+  useEffect(() => {
+    const savedDrawnBalls = localStorage.getItem('drawnBalls')
+    const savedCurrentBall = localStorage.getItem('currentBall')
+    
+    if (savedDrawnBalls) {
+      setDrawnBalls(JSON.parse(savedDrawnBalls))
+    }
+    if (savedCurrentBall) {
+      setCurrentBall(JSON.parse(savedCurrentBall))
+    }
+  }, [])
+
+  // Save state changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('drawnBalls', JSON.stringify(drawnBalls))
+  }, [drawnBalls])
+
+  useEffect(() => {
+    localStorage.setItem('currentBall', JSON.stringify(currentBall))
+  }, [currentBall])
 
   // Generate a new ball that hasn't been drawn yet
   const drawNewBall = () => {
@@ -70,6 +92,8 @@ export default function BingoHelper() {
   const handleReset = () => {
     setDrawnBalls([])
     setCurrentBall(null)
+    localStorage.removeItem('drawnBalls')
+    localStorage.removeItem('currentBall')
   }
 
   return (
