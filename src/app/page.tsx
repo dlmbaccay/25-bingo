@@ -115,9 +115,9 @@ export default function BingoHelper() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-20 justify-center">
         {/* Left side - Draw button and current ball */}
-        <div className="flex flex-col items-center lg:w-1/3">
+        <div className="flex flex-col items-center lg:w-fit">
           { drawnBalls.length !== 75 && (
             <Button
               size="lg"
