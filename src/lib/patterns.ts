@@ -1,4 +1,5 @@
 export type PatternId =
+  | "none"
   | "horizontal"
   | "vertical"
   | "diagonal1"
@@ -9,6 +10,7 @@ export type PatternId =
   | "custom"
 
 export const PATTERN_LABELS: Record<PatternId, string> = {
+  none: "No Pattern",
   horizontal: "Horizontal Line",
   vertical: "Vertical Line",
   diagonal1: "Diagonal TL→BR",
@@ -20,6 +22,7 @@ export const PATTERN_LABELS: Record<PatternId, string> = {
 }
 
 export const PATTERN_INDEXES: Record<PatternId, number[]> = {
+  none: [],
   horizontal: [0, 1, 2, 3, 4],
   vertical: [0, 5, 10, 15, 20],
   diagonal1: [0, 6, 12, 18, 24],

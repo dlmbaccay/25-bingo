@@ -101,6 +101,21 @@ export default function GameRoomPage() {
         const name = payload?.username || "Player"
         setBingoMessage(`${name} called BINGO!`)
         setTimeout(() => setBingoMessage(null), 5000)
+        // Update host winners list immediately and then sync from server
+        if (isHost) {
+          const provisional = {
+            id: crypto.randomUUID(),
+            room_id: String(roomId),
+            username: name,
+            card_version: null,
+            pattern: gameRef.current.pattern ?? null,
+            called_at: new Date().toISOString(),
+          } as any
+          setWinners((prev) => [...prev, provisional])
+          setTimeout(() => {
+            fetchBingoCalls(String(roomId)).then(setWinners)
+          }, 750)
+        }
       })
       .on("broadcast", { event: "request_state" }, async ({ payload }: { payload: { requester: string } }) => {
         if (!isHost) return
@@ -122,6 +137,26 @@ export default function GameRoomPage() {
         if (isHost) {
           channel.send({ type: "broadcast", event: "state", payload: gameRef.current })
         }
+      })
+      .on("presence", { event: "join" }, () => {
+        const state = channel.presenceState() as Record<string, unknown[]>
+        const names: string[] = []
+        Object.values(state).forEach((arr) => {
+          for (const entry of arr as Array<any>) {
+            if (entry?.role === "player" && entry?.username) names.push(String(entry.username))
+          }
+        })
+        setPlayers(names)
+      })
+      .on("presence", { event: "leave" }, () => {
+        const state = channel.presenceState() as Record<string, unknown[]>
+        const names: string[] = []
+        Object.values(state).forEach((arr) => {
+          for (const entry of arr as Array<any>) {
+            if (entry?.role === "player" && entry?.username) names.push(String(entry.username))
+          }
+        })
+        setPlayers(names)
       })
 
     channel.subscribe(async (status: string) => {
@@ -199,6 +234,11 @@ export default function GameRoomPage() {
 
   const refreshCard = useCallback(() => {
     if (isHost) return
+    if (gameRef.current.drawnBalls.length > 0) {
+      setBingoMessage("Card refresh is locked once drawing starts.")
+      setTimeout(() => setBingoMessage(null), 3000)
+      return
+    }
     const next = cardVersion + 1
     setCardVersion(next)
     try { localStorage.setItem(`card_version:${roomId}:${clientId}`, String(next)) } catch {}
@@ -208,7 +248,8 @@ export default function GameRoomPage() {
 
   // Check if player's card satisfies the active pattern using drawn balls
   const checkBingo = useCallback((): boolean => {
-    if (!cardNumbers || !gameRef.current.pattern) return false
+    if (!cardNumbers) return false
+    if (!gameRef.current.pattern || gameRef.current.pattern === "none") return false
     const pattern = gameRef.current.pattern
     const required = pattern === "custom" ? (gameRef.current.customPattern ?? []) : PATTERN_INDEXES[pattern]
     const called = new Set(gameRef.current.drawnBalls)
@@ -233,9 +274,6 @@ export default function GameRoomPage() {
       channelRef.current?.send({ type: "broadcast", event: "bingo_announce", payload: { username: username || "Player" } })
       // Best-effort record to server
       recordBingoCall({ roomId: String(roomId), username: username || "Player", cardVersion, pattern: gameRef.current.pattern || null })
-      if (isHost) {
-        fetchBingoCalls(String(roomId)).then(setWinners)
-      }
     } else {
       setBingoMessage("Not yet! Keep going.")
       setTimeout(() => setBingoMessage(null), 3000)
@@ -268,7 +306,12 @@ export default function GameRoomPage() {
         randomBall = Math.floor(Math.random() * 75) + 1
       } while (gameRef.current.drawnBalls.includes(randomBall))
 
-      const interim: GameState = { drawnBalls: gameRef.current.drawnBalls, currentBall: randomBall }
+      const interim: GameState = {
+        drawnBalls: gameRef.current.drawnBalls,
+        currentBall: randomBall,
+        pattern: gameRef.current.pattern ?? null,
+        customPattern: gameRef.current.customPattern ?? null,
+      }
       setGame(interim)
       steps++
       if (steps > maxSteps) {
@@ -276,6 +319,8 @@ export default function GameRoomPage() {
         const final: GameState = {
           drawnBalls: [...gameRef.current.drawnBalls, randomBall],
           currentBall: randomBall,
+          pattern: gameRef.current.pattern ?? null,
+          customPattern: gameRef.current.customPattern ?? null,
         }
         announceState(final)
         return
@@ -288,7 +333,12 @@ export default function GameRoomPage() {
 
   const handleReset = useCallback(() => {
     if (!isHost) return
-    announceState({ drawnBalls: [], currentBall: null, pattern: gameRef.current.pattern ?? null })
+    announceState({
+      drawnBalls: [],
+      currentBall: null,
+      pattern: gameRef.current.pattern ?? null,
+      customPattern: gameRef.current.customPattern ?? null,
+    })
     try { localStorage.removeItem(`game:${roomId}`) } catch {}
     clearGameState(String(roomId))
   }, [isHost, announceState])
@@ -327,7 +377,7 @@ export default function GameRoomPage() {
         <div className="flex flex-col items-center lg:w-fit">
           {isHost && (
             <PatternBuilder
-              patternId={game.pattern ?? "horizontal"}
+              patternId={game.pattern ?? "none"}
               customIndexes={game.customPattern ?? (game.pattern ? PATTERN_INDEXES[game.pattern] : [])}
               onChangePatternId={(id) => announceState({ ...gameRef.current, pattern: id })}
               onChangeCustom={(indexes) => announceState({ ...gameRef.current, customPattern: indexes })}
@@ -380,7 +430,7 @@ export default function GameRoomPage() {
             />
           )}
           {!isHost && (
-            <Button onClick={refreshCard} variant="secondary" className="mt-3">Refresh Card</Button>
+            <Button onClick={refreshCard} variant="secondary" className="mt-3" disabled={game.drawnBalls.length > 0} title={game.drawnBalls.length > 0 ? "Disabled after first draw" : undefined}>Refresh Card</Button>
           )}
           {!isHost && (
             <Button onClick={handlePlayerBingo} className="mt-3 font-bold">BINGO!</Button>
