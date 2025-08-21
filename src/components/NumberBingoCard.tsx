@@ -74,7 +74,7 @@ const NumberBingoCard: React.FC<Props> = ({ numbers, drawnBalls, interactive = f
 							? PATTERN_INDEXES[activePattern].includes(index)
 							: false
 					const isPunched = punched[index] || isFree
-					const patternTextClass = inPattern && !called && !isPunched ? "text-blue-600" : ""
+					const patternTextClass = inPattern && !isPunched ? "text-blue-600" : ""
 					return (
 						<button
 							key={index}
