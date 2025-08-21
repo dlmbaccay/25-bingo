@@ -100,7 +100,6 @@ export default function GameRoomPage() {
       .on("broadcast", { event: "bingo_announce" }, ({ payload }: { payload: { username: string } }) => {
         const name = payload?.username || "Player"
         setBingoMessage(`${name} called BINGO!`)
-        setTimeout(() => setBingoMessage(null), 5000)
         // Update host winners list immediately and then sync from server
         if (isHost) {
           const provisional = {
@@ -246,6 +245,15 @@ export default function GameRoomPage() {
     setCardNumbers(generateCardNumbers(seed))
   }, [isHost, cardVersion, roomId, clientId])
 
+  const saveUsername = useCallback(() => {
+    if (isHost) return
+    const trimmed = (username || "").trim()
+    try { localStorage.setItem("bingo_username", trimmed) } catch {}
+    if (channelRef.current) {
+      channelRef.current.track({ online_at: new Date().toISOString(), role: "player", username: trimmed })
+    }
+  }, [isHost, username])
+
   // Check if player's card satisfies the active pattern using drawn balls
   const checkBingo = useCallback((): boolean => {
     if (!cardNumbers) return false
@@ -351,8 +359,12 @@ export default function GameRoomPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       {bingoMessage && (
-        <div className="mb-4">
-          <Card className="p-3 font-semibold">{bingoMessage}</Card>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="p-6 max-w-sm w-[90%] text-center space-y-4">
+            <div className="text-3xl font-extrabold">BINGO!</div>
+            <div className="text-lg font-semibold">{bingoMessage}</div>
+            <Button onClick={() => setBingoMessage(null)} className="font-bold w-full">Close</Button>
+          </Card>
         </div>
       )}
       <div className="flex flex-row items-center justify-between mb-8">
@@ -375,6 +387,21 @@ export default function GameRoomPage() {
 
       <div className="flex flex-col lg:flex-row gap-12 justify-center">
         <div className="flex flex-col items-center lg:w-fit">
+          {!isHost && (
+            <div className="w-full max-w-xs mb-6">
+              <label className="block text-sm font-medium mb-1">Your Name</label>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-2"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveUsername() }}
+                  placeholder="Enter display name"
+                />
+                <Button variant="secondary" onClick={saveUsername}>Save</Button>
+              </div>
+            </div>
+          )}
           {isHost && (
             <PatternBuilder
               patternId={game.pattern ?? "none"}
@@ -430,10 +457,10 @@ export default function GameRoomPage() {
             />
           )}
           {!isHost && (
-            <Button onClick={refreshCard} variant="secondary" className="mt-3" disabled={game.drawnBalls.length > 0} title={game.drawnBalls.length > 0 ? "Disabled after first draw" : undefined}>Refresh Card</Button>
+            <Button onClick={refreshCard} variant="secondary" className="w-[75%] mt-3" disabled={game.drawnBalls.length > 0} title={game.drawnBalls.length > 0 ? "Disabled after first draw" : undefined}>Refresh Card</Button>
           )}
           {!isHost && (
-            <Button onClick={handlePlayerBingo} className="mt-3 font-bold">BINGO!</Button>
+            <Button onClick={handlePlayerBingo} className="mt-3 w-[75%] font-bold">BINGO!</Button>
           )}
         </div>
 
