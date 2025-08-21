@@ -13,6 +13,7 @@ function generateRoomId(): string {
 export default function MultiplayerLobby() {
   const router = useRouter()
   const [joinId, setJoinId] = useState("")
+  const [name, setName] = useState("")
 
   const createRoom = useCallback(() => {
     const roomId = generateRoomId()
@@ -21,6 +22,7 @@ export default function MultiplayerLobby() {
 
   const joinRoom = useCallback(() => {
     if (!joinId.trim()) return
+    if (name.trim()) localStorage.setItem("bingo_username", name.trim())
     router.push(`/game/${joinId.trim()}`)
   }, [joinId, router])
 
@@ -38,6 +40,12 @@ export default function MultiplayerLobby() {
 
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold">Join a Game</h2>
+          <input
+            className="w-full rounded-md border border-gray-300 px-3 py-2"
+            placeholder="Enter your display name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
           <div className="flex gap-2">
             <input
               className="flex-1 rounded-md border border-gray-300 px-3 py-2"
