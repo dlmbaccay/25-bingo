@@ -1,16 +1,19 @@
 import type React from "react"
 import { useEffect, useMemo, useState } from "react"
+import { PATTERN_INDEXES, type PatternId } from "@/lib/patterns"
 
 type Props = {
   numbers: (number | null)[]
   drawnBalls: number[]
   interactive?: boolean
   storageKey?: string
+  activePattern?: PatternId | null
+  customPattern?: number[] | null
 }
 
 const headers = ["B", "I", "N", "G", "O"]
 
-const NumberBingoCard: React.FC<Props> = ({ numbers, drawnBalls, interactive = false, storageKey }) => {
+const NumberBingoCard: React.FC<Props> = ({ numbers, drawnBalls, interactive = false, storageKey, activePattern = null, customPattern = null }) => {
   const empty = useMemo(() => new Array(25).fill(false) as boolean[], [])
   const [punched, setPunched] = useState<boolean[]>(empty)
 
@@ -65,6 +68,11 @@ const NumberBingoCard: React.FC<Props> = ({ numbers, drawnBalls, interactive = f
         {numbers.map((value, index) => {
           const isFree = value === null
           const called = typeof value === "number" && drawnBalls.includes(value)
+          const inPattern = activePattern === "custom"
+            ? (customPattern ?? []).includes(index)
+            : activePattern
+              ? PATTERN_INDEXES[activePattern].includes(index)
+              : false
           const isPunched = punched[index] || isFree
           return (
             <button
@@ -72,7 +80,7 @@ const NumberBingoCard: React.FC<Props> = ({ numbers, drawnBalls, interactive = f
               onClick={() => toggle(index)}
               className={`w-12 h-12 rounded-md border-2 flex items-center justify-center text-sm font-bold select-none ${
                 isPunched ? "bg-primary border-primary text-white" : "border-gray-300 bg-white"
-              } ${called ? "ring-2 ring-green-500" : ""}`}
+              } ${called ? "ring-2 ring-green-500" : ""} ${inPattern ? "outline outline-2 outline-blue-500" : ""}`}
             >
               {isFree ? "FREE" : value}
             </button>

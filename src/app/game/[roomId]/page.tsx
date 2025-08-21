@@ -8,10 +8,15 @@ import { Card } from "@/components/ui/card"
 import NumberBingoCard from "@/components/NumberBingoCard"
 import { generateCardNumbers } from "@/lib/bingo"
 import { clearGameState, fetchGameState, saveGameState } from "@/lib/supabaseGame"
+import { PATTERN_LABELS, PATTERN_INDEXES, type PatternId } from "@/lib/patterns"
+import PatternBuilder from "@/components/PatternBuilder"
+import { fetchBingoCalls, recordBingoCall, type BingoCallRow } from "@/lib/supabaseBingo"
 
 type GameState = {
   drawnBalls: number[]
   currentBall: number | null
+  pattern?: PatternId | null
+  customPattern?: number[] | null
 }
 
 function getBingoLetter(number: number): string {
@@ -65,6 +70,11 @@ export default function GameRoomPage() {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const gameRef = useRef<GameState>({ drawnBalls: [], currentBall: null })
+  const [username, setUsername] = useState("")
+  const [cardVersion, setCardVersion] = useState(0)
+  const [bingoMessage, setBingoMessage] = useState<string | null>(null)
+  const [winners, setWinners] = useState<BingoCallRow[]>([])
+  const [players, setPlayers] = useState<string[]>([])
 
   const roomChannelName = useMemo(() => `bingo:room-${roomId}`, [roomId])
 
@@ -87,6 +97,11 @@ export default function GameRoomPage() {
         const next = payload as GameState
         setGame(next)
       })
+      .on("broadcast", { event: "bingo_announce" }, ({ payload }: { payload: { username: string } }) => {
+        const name = payload?.username || "Player"
+        setBingoMessage(`${name} called BINGO!`)
+        setTimeout(() => setBingoMessage(null), 5000)
+      })
       .on("broadcast", { event: "request_state" }, async ({ payload }: { payload: { requester: string } }) => {
         if (!isHost) return
         // Reply with authoritative state
@@ -96,6 +111,13 @@ export default function GameRoomPage() {
         const state = channel.presenceState() as Record<string, unknown[]>
         const total = Object.values(state).reduce((acc, arr) => acc + arr.length, 0)
         setOnlineCount(total)
+        const names: string[] = []
+        Object.values(state).forEach((arr) => {
+          for (const entry of arr as Array<any>) {
+            if (entry?.role === "player" && entry?.username) names.push(String(entry.username))
+          }
+        })
+        setPlayers(names)
         // Host proactively shares state when someone joins
         if (isHost) {
           channel.send({ type: "broadcast", event: "state", payload: gameRef.current })
@@ -104,7 +126,10 @@ export default function GameRoomPage() {
 
     channel.subscribe(async (status: string) => {
       if (status === "SUBSCRIBED") {
-        await channel.track({ online_at: new Date().toISOString(), role: isHost ? "host" : "player" })
+        // Load username from localStorage for presence
+        const savedName = localStorage.getItem("bingo_username") || ""
+        setUsername(isHost ? "" : savedName)
+        await channel.track({ online_at: new Date().toISOString(), role: isHost ? "host" : "player", username: isHost ? undefined : savedName })
         setIsSubscribed(true)
         // Player requests latest state immediately
         if (!isHost) {
@@ -135,6 +160,8 @@ export default function GameRoomPage() {
           return
         }
       })
+      // Load prior winners
+      fetchBingoCalls(String(roomId)).then(setWinners)
       const saved = localStorage.getItem(`game:${roomId}`)
       if (saved) {
         const parsed = JSON.parse(saved) as GameState
@@ -161,9 +188,59 @@ export default function GameRoomPage() {
   // Generate stable per-player card based on room + client
   useEffect(() => {
     if (!roomId) return
-    const seed = `${roomId}:${clientId}`
+    // Load card version per room/player
+    try {
+      const savedVer = localStorage.getItem(`card_version:${roomId}:${clientId}`)
+      if (savedVer) setCardVersion(parseInt(savedVer) || 0)
+    } catch {}
+    const seed = `${roomId}:${clientId}:${cardVersion}`
     setCardNumbers(generateCardNumbers(seed))
-  }, [roomId, clientId])
+  }, [roomId, clientId, cardVersion])
+
+  const refreshCard = useCallback(() => {
+    if (isHost) return
+    const next = cardVersion + 1
+    setCardVersion(next)
+    try { localStorage.setItem(`card_version:${roomId}:${clientId}`, String(next)) } catch {}
+    const seed = `${roomId}:${clientId}:${next}`
+    setCardNumbers(generateCardNumbers(seed))
+  }, [isHost, cardVersion, roomId, clientId])
+
+  // Check if player's card satisfies the active pattern using drawn balls
+  const checkBingo = useCallback((): boolean => {
+    if (!cardNumbers || !gameRef.current.pattern) return false
+    const pattern = gameRef.current.pattern
+    const required = pattern === "custom" ? (gameRef.current.customPattern ?? []) : PATTERN_INDEXES[pattern]
+    const called = new Set(gameRef.current.drawnBalls)
+    for (const idx of required) {
+      if (idx === 12) continue // free space
+      const value = cardNumbers[idx]
+      if (typeof value !== "number") return false
+      if (!called.has(value)) return false
+    }
+    return true
+  }, [cardNumbers])
+
+  const handlePlayerBingo = useCallback(() => {
+    if (isHost) return
+    if (!gameRef.current.pattern) {
+      setBingoMessage("No pattern selected by host yet.")
+      setTimeout(() => setBingoMessage(null), 3000)
+      return
+    }
+    const ok = checkBingo()
+    if (ok) {
+      channelRef.current?.send({ type: "broadcast", event: "bingo_announce", payload: { username: username || "Player" } })
+      // Best-effort record to server
+      recordBingoCall({ roomId: String(roomId), username: username || "Player", cardVersion, pattern: gameRef.current.pattern || null })
+      if (isHost) {
+        fetchBingoCalls(String(roomId)).then(setWinners)
+      }
+    } else {
+      setBingoMessage("Not yet! Keep going.")
+      setTimeout(() => setBingoMessage(null), 3000)
+    }
+  }, [isHost, checkBingo, username])
 
   const announceState = useCallback((next: GameState) => {
     setGame(next)
@@ -211,7 +288,7 @@ export default function GameRoomPage() {
 
   const handleReset = useCallback(() => {
     if (!isHost) return
-    announceState({ drawnBalls: [], currentBall: null })
+    announceState({ drawnBalls: [], currentBall: null, pattern: gameRef.current.pattern ?? null })
     try { localStorage.removeItem(`game:${roomId}`) } catch {}
     clearGameState(String(roomId))
   }, [isHost, announceState])
@@ -223,6 +300,11 @@ export default function GameRoomPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {bingoMessage && (
+        <div className="mb-4">
+          <Card className="p-3 font-semibold">{bingoMessage}</Card>
+        </div>
+      )}
       <div className="flex flex-row items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">Room {roomId}</h1>
@@ -243,6 +325,15 @@ export default function GameRoomPage() {
 
       <div className="flex flex-col lg:flex-row gap-12 justify-center">
         <div className="flex flex-col items-center lg:w-fit">
+          {isHost && (
+            <PatternBuilder
+              patternId={game.pattern ?? "horizontal"}
+              customIndexes={game.customPattern ?? (game.pattern ? PATTERN_INDEXES[game.pattern] : [])}
+              onChangePatternId={(id) => announceState({ ...gameRef.current, pattern: id })}
+              onChangeCustom={(indexes) => announceState({ ...gameRef.current, customPattern: indexes })}
+            />
+          )}
+
           {isHost && game.drawnBalls.length !== 75 && (
             <Button
               size="lg"
@@ -283,8 +374,16 @@ export default function GameRoomPage() {
               numbers={cardNumbers}
               drawnBalls={game.drawnBalls}
               interactive={!isHost}
-              storageKey={`${roomId}:${clientId}`}
+              storageKey={`${roomId}:${clientId}:${cardVersion}`}
+              activePattern={game.pattern ?? null}
+              customPattern={game.customPattern ?? null}
             />
+          )}
+          {!isHost && (
+            <Button onClick={refreshCard} variant="secondary" className="mt-3">Refresh Card</Button>
+          )}
+          {!isHost && (
+            <Button onClick={handlePlayerBingo} className="mt-3 font-bold">BINGO!</Button>
           )}
         </div>
 
@@ -310,6 +409,28 @@ export default function GameRoomPage() {
                 )}
               </div>
             </div>
+            {isHost && (
+              <div className="space-y-2 mt-6">
+                <h3 className="font-semibold">Players</h3>
+                <ul className="list-disc pl-5 text-sm">
+                  {players.length === 0 && <li className="text-gray-500">No players yet</li>}
+                  {players.map((p, i) => (
+                    <li key={`${p}-${i}`}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {isHost && (
+              <div className="space-y-2 mt-6">
+                <h3 className="font-semibold">Bingo Calls</h3>
+                <ul className="list-disc pl-5 text-sm">
+                  {winners.length === 0 && <li className="text-gray-500">No winners yet</li>}
+                  {winners.map((w) => (
+                    <li key={w.id}>{w.username || "Player"} — {new Date(w.called_at).toLocaleTimeString()}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </Card>
         </div>
       </div>
