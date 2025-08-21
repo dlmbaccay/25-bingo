@@ -13,7 +13,6 @@ type Props = {
 const headers = ["B", "I", "N", "G", "O"]
 
 export const PatternBuilder: React.FC<Props> = ({ patternId, customIndexes, onChangePatternId, onChangeCustom }) => {
-  const isCustom = patternId === "custom"
   const activeIndexes: number[] = (() => {
     if (!patternId) return []
     if (patternId === "custom") return customIndexes
