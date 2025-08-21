@@ -27,6 +27,7 @@ export const PATTERN_INDEXES: Record<PatternId, number[]> = {
   x: [0, 4, 6, 8, 12, 16, 18, 20, 24],
   blackout: Array.from({ length: 25 }, (_, i) => i),
   aroundTheWorld: [0, 1, 2, 3, 4, 9, 14, 19, 24, 23, 22, 21, 20, 15, 10, 5],
+  custom: [],
 }
 
 
