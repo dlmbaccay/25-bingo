@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
+import { validateRoomExists } from "@/lib/supabaseGame";
+import { toast } from "sonner";
 
 function generateRoomId(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -26,10 +28,19 @@ export default function LandingPage() {
     router.push(`/game/${roomId}?host=1`);
   }, [router]);
 
-  const joinRoom = useCallback(() => {
+  const joinRoom = useCallback(async () => {
     if (!joinId.trim() || !name.trim()) return;
+
+    const roomId = joinId.trim();
+    const roomExists = await validateRoomExists(roomId);
+
+    if (!roomExists) {
+      toast.error("Room not found, ID doesn't exist.");
+      return;
+    }
+
     localStorage.setItem("bingo_username", name.trim());
-    router.push(`/game/${joinId.trim()}`);
+    router.push(`/game/${roomId}`);
   }, [joinId, name, router]);
 
   const handleKeyDown = useCallback(
