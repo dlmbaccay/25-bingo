@@ -53,7 +53,7 @@ export default function LandingPage() {
   );
 
   return (
-    <div className="flex flex-col h-screen items-center justify-center">
+    <div className="flex flex-col h-screen items-center justify-center px-8">
       {/* Hero Section */}
       <div className="text-center">
         <h1 className="text-5xl font-bold mb-6">25 Bingo</h1>
@@ -118,7 +118,7 @@ export default function LandingPage() {
             size="lg"
             onClick={joinRoom}
             disabled={!joinId.trim() || !name.trim()}
-            className="w-full text-lg py-6 font-bold"
+            className="w-full text-base py-6 font-bold"
           >
             Join Room
           </Button>
