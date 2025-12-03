@@ -1,196 +1,125 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { motion } from "framer-motion"
-import BingoCard from "@/components/BingoCard"
-import { RefreshCw } from "lucide-react"
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import Link from "next/link";
 
-export default function BingoHelper() {
-  const [drawnBalls, setDrawnBalls] = useState<number[]>([])
-  const [currentBall, setCurrentBall] = useState<number | null>(null)
-  const [isDrawing, setIsDrawing] = useState(false)
+function generateRoomId(): string {
+  return Math.random().toString(36).slice(2, 8);
+}
 
-  // Load saved state from localStorage on component mount
+export default function LandingPage() {
+  const router = useRouter();
+  const [joinId, setJoinId] = useState("");
+  const [name, setName] = useState("");
+
+  // Pre-fill name from localStorage if available
   useEffect(() => {
-    const savedDrawnBalls = localStorage.getItem('drawnBalls')
-    const savedCurrentBall = localStorage.getItem('currentBall')
-    
-    if (savedDrawnBalls) {
-      setDrawnBalls(JSON.parse(savedDrawnBalls))
-    }
-    if (savedCurrentBall) {
-      setCurrentBall(JSON.parse(savedCurrentBall))
-    }
-  }, [])
+    const savedName = localStorage.getItem("bingo_username") || "";
+    setName(savedName);
+  }, []);
 
-  // Save state changes to localStorage
-  useEffect(() => {
-    localStorage.setItem('drawnBalls', JSON.stringify(drawnBalls))
-  }, [drawnBalls])
+  const createRoom = useCallback(() => {
+    const roomId = generateRoomId();
+    router.push(`/game/${roomId}?host=1`);
+  }, [router]);
 
-  useEffect(() => {
-    localStorage.setItem('currentBall', JSON.stringify(currentBall))
-  }, [currentBall])
+  const joinRoom = useCallback(() => {
+    if (!joinId.trim() || !name.trim()) return;
+    localStorage.setItem("bingo_username", name.trim());
+    router.push(`/game/${joinId.trim()}`);
+  }, [joinId, name, router]);
 
-  // Generate a new ball that hasn't been drawn yet
-  const drawNewBall = () => {
-    if (drawnBalls.length === 75) {
-      alert("All balls have been drawn!")
-      return
-    }
-
-    setIsDrawing(true)
-
-    // Simulate the drawing animation
-    let counter = 0
-    const interval = setInterval(() => {
-      // Generate a random ball between 1-75 that hasn't been drawn yet
-      let randomBall
-      do {
-        randomBall = Math.floor(Math.random() * 75) + 1
-      } while (drawnBalls.includes(randomBall))
-
-      setCurrentBall(randomBall)
-      counter++
-
-      if (counter > 10) {
-        clearInterval(interval)
-        setIsDrawing(false)
-        setDrawnBalls((prev) => [...prev, randomBall])
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        joinRoom();
       }
-    }, 100)
-  }
-
-  // Get the letter (B, I, N, G, O) based on the ball number
-  const getBingoLetter = (number: number) => {
-    if (number <= 15) return "B"
-    if (number <= 30) return "I"
-    if (number <= 45) return "N"
-    if (number <= 60) return "G"
-    return "O"
-  }
-
-  // Get color based on the letter
-  const getBallColor = (letter: string) => {
-    switch (letter) {
-      case "B":
-        return "bg-red-500"
-      case "I":
-        return "bg-blue-500"
-      case "N":
-        return "bg-green-500"
-      case "G":
-        return "bg-yellow-500"
-      case "O":
-        return "bg-purple-500"
-      default:
-        return "bg-gray-500"
-    }
-  }
-
-  const handleReset = () => {
-    setDrawnBalls([])
-    setCurrentBall(null)
-    localStorage.removeItem('drawnBalls')
-    localStorage.removeItem('currentBall')
-  }
+    },
+    [joinRoom],
+  );
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-row items-center justify-between mb-8">
-        <h1 className="text-4xl font-bold text-center">LOT 25 BINGO</h1>
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col h-screen items-center justify-center">
+      {/* Hero Section */}
+      <div className="text-center">
+        <h1 className="text-5xl font-bold mb-6">25 Bingo</h1>
+      </div>
+
+      {/* Two-Card Layout */}
+      <div className="flex flex-col gap-8 mb-8">
+        {/* Host Card */}
+        <Card className="p-8 flex flex-col">
+          <div className="flex-1">
+            <h2 className="text-xl font-bold">Host a Game</h2>
+            <p className="text-sm text-gray-600">
+              Create a new bingo room and share the link with players
+            </p>
+          </div>
           <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleReset}
-            className="opacity-30 hover:opacity-100 transition-opacity"
-            title="Hard Reset"
+            onClick={createRoom}
+            className="w-full text-base py-6 font-bold"
           >
-            <RefreshCw className="h-4 w-4" />
+            Create Room
           </Button>
-          <h2 className="text-2xl font-semibold">Drawn Balls: {drawnBalls.length}/75</h2>
-        </div>
-      </div>
+        </Card>
 
-      <div className="flex flex-col lg:flex-row gap-20 justify-center">
-        {/* Left side - Draw button and current ball */}
-        <div className="flex flex-col items-center lg:w-fit">
-          { drawnBalls.length !== 75 && (
-            <Button
-              size="lg"
-              onClick={drawNewBall}
-              disabled={isDrawing || drawnBalls.length === 75}
-              className="mb-8 text-xl px-10 py-8 w-full max-w-xs font-bold"
-            >
-              {isDrawing ? "Drawing..." : "Draw Ball"}
-            </Button>
-          )}
+        {/* Join Card */}
+        <Card className="p-8 flex flex-col">
+          <div className="flex-1">
+            <h2 className="text-xl font-bold">Join a Game</h2>
+            <p className="text-sm text-gray-600">
+              Enter your name and room ID to join an existing game
+            </p>
 
-          { drawnBalls.length === 75 && (
-            <Button
-              size="lg"
-              onClick={handleReset}
-              className="mb-8 text-xl px-10 py-8 w-full max-w-xs font-bold"
-            >
-              Reset
-            </Button>
-          )}
-
-          {currentBall ? (
-            <motion.div
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 300 }}
-              className="relative"
-            >
-              <div
-                className={`${getBallColor(getBingoLetter(currentBall))} w-[310px] h-[310px] rounded-full flex items-center justify-center shadow-lg`}
-              >
-                <div className="bg-white w-[260px] h-[260px] rounded-full flex flex-col items-center justify-center">
-                  <span className="text-8xl font-bold">{getBingoLetter(currentBall)}</span>
-                  <span className="text-9xl font-bold">{currentBall}</span>
-                </div>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1.5">
+                  Your Name
+                </label>
+                <input
+                  className="w-full rounded-md border border-gray-300 px-4 py-2.5"
+                  placeholder="Enter your display name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
               </div>
-            </motion.div>
-          ) : (
-            <div className="w-[310px] h-[310px] rounded-full border-12 border-gray-300 flex items-center justify-center">
-              <span className="text-gray-400 text-xl">No ball drawn</span>
-            </div>
-          )}
-          <BingoCard />
-        </div>
 
-        {/* Right side - Drawn balls rack */}
-        <div className="lg:w-2/3">
-          <Card className="p-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-              {["B", "I", "N", "G", "O"].map((letter) => (
-                <div key={letter} className="flex flex-col">
-                  <h3 className="font-bold text-center mb-2 text-2xl">{letter}</h3>
-                  <div className="space-y-2">
-                    {drawnBalls
-                      .filter((ball) => getBingoLetter(ball) === letter)
-                      .sort((a, b) => a - b)
-                      .map((ball) => (
-                        <div
-                          key={ball}
-                          className={`${getBallColor(getBingoLetter(ball))} w-12 h-12 rounded-full flex items-center justify-center mx-auto`}
-                        >
-                          <div className="bg-white w-11 h-11 rounded-full flex items-center justify-center">
-                            <span className="text-2xl font-bold">{ball}</span>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              ))}
+              <div>
+                <label className="block text-sm font-medium mb-1.5">
+                  Room ID
+                </label>
+                <input
+                  className="w-full rounded-md border border-gray-300 px-4 py-2.5"
+                  placeholder="e.g. abc123"
+                  value={joinId}
+                  onChange={(e) => setJoinId(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
+              </div>
             </div>
-          </Card>
-        </div>
+          </div>
+
+          <Button
+            size="lg"
+            onClick={joinRoom}
+            disabled={!joinId.trim() || !name.trim()}
+            className="w-full text-lg py-6 font-bold"
+          >
+            Join Room
+          </Button>
+        </Card>
       </div>
+
+      {/* Footer Link to Solo Mode */}
+      {/*<div className="text-center text-sm text-gray-500">
+        <Link href="/solo" className="hover:text-gray-700 hover:underline">
+          Or play solo mode
+        </Link>
+      </div>*/}
     </div>
-  )
+  );
 }
