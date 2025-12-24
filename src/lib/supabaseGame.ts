@@ -1,15 +1,38 @@
 import { supabase } from "./supabaseClient";
+import type { PatternId } from "./patterns";
+
+export type WinnerClaim = {
+	id: string; // UUID
+	username: string;
+	clientId: string;
+	cardVersion: number;
+	claimedAt: string; // ISO timestamp
+	ballNumber: number; // Ball that completed pattern
+	pattern: PatternId | null;
+	customPattern?: number[] | null;
+	status: "pending" | "approved" | "rejected";
+	cardNumbers: (number | null)[]; // Card snapshot for verification
+	punchedIndexes: number[]; // Which cells were punched
+};
 
 export type PersistedGameRow = {
   id: string;
   drawn_balls: number[] | null;
   current_ball: number | null;
+  pattern?: string | null;
+  custom_pattern?: number[] | null;
+  winners?: WinnerClaim[] | null;
   updated_at?: string;
 };
 
 export type GameState = {
   drawnBalls: number[];
   currentBall: number | null;
+  pattern?: PatternId | null;
+  customPattern?: number[] | null;
+  winners: WinnerClaim[];
+  isDrawing?: boolean;
+  resetCount?: number;
 };
 
 export async function fetchGameState(
@@ -18,7 +41,7 @@ export async function fetchGameState(
   try {
     const { data, error } = await supabase
       .from("games")
-      .select("id, drawn_balls, current_ball")
+      .select("id, drawn_balls, current_ball, pattern, custom_pattern, winners")
       .eq("id", roomId)
       .maybeSingle();
 
@@ -30,6 +53,9 @@ export async function fetchGameState(
     return {
       drawnBalls: data.drawn_balls ?? [],
       currentBall: data.current_ball ?? null,
+      pattern: (data.pattern as PatternId) ?? null,
+      customPattern: data.custom_pattern ?? null,
+      winners: (data.winners as WinnerClaim[]) ?? [],
     };
   } catch {
     return null;
@@ -46,6 +72,9 @@ export async function saveGameState(
         id: roomId,
         drawn_balls: state.drawnBalls,
         current_ball: state.currentBall,
+        pattern: state.pattern,
+        custom_pattern: state.customPattern,
+        winners: state.winners,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "id" },

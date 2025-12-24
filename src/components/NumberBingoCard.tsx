@@ -9,11 +9,20 @@ type Props = {
 	storageKey?: string
 	activePattern?: PatternId | null
 	customPattern?: number[] | null
+	onPunchChange?: () => void
 }
 
 const headers = ["B", "I", "N", "G", "O"]
 
-const NumberBingoCard: React.FC<Props> = ({ numbers, drawnBalls, interactive = false, storageKey, activePattern = null, customPattern = null }) => {
+const NumberBingoCard: React.FC<Props> = ({
+	numbers,
+	drawnBalls,
+	interactive = false,
+	storageKey,
+	activePattern = null,
+	customPattern = null,
+	onPunchChange,
+}) => {
 	const empty = useMemo(() => new Array(25).fill(false) as boolean[], [])
 	const [punched, setPunched] = useState<boolean[]>(empty)
 
@@ -39,7 +48,9 @@ const NumberBingoCard: React.FC<Props> = ({ numbers, drawnBalls, interactive = f
 		// Always punch free space (center)
 		next[12] = true
 		localStorage.setItem(`punched:${storageKey}`, JSON.stringify(next))
-	}, [punched, storageKey])
+		// Notify parent of punch change
+		onPunchChange?.()
+	}, [punched, storageKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const toggle = (idx: number) => {
 		if (!interactive) return
