@@ -954,6 +954,7 @@ export default function GameRoomPage() {
               )}
             </div>
           )}
+          
 
           {game.currentBall ? (
             <div className="relative">
