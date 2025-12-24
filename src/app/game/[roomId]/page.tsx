@@ -18,7 +18,6 @@ import {
 import {
   PATTERN_LABELS,
   PATTERN_INDEXES,
-  type PatternId,
 } from "@/lib/patterns";
 import PatternBuilder from "@/components/PatternBuilder";
 import { toast } from "sonner";
@@ -191,7 +190,7 @@ export default function GameRoomPage() {
       .on(
         "broadcast",
         { event: "request_state" },
-        async ({ payload }: { payload: { requester: string } }) => {
+        async () => {
           if (!isHost) return;
           // Reply with authoritative state
           channel.send({
@@ -232,7 +231,7 @@ export default function GameRoomPage() {
               .map((_, i) => payload.punchedIndexes.includes(i)),
             drawnBalls: gameRef.current.drawnBalls,
             pattern: payload.pattern,
-            customPattern: payload.customPattern,
+            customPattern: payload.customPattern ?? null,
           });
 
           if (!verified.isValid) {
@@ -859,7 +858,7 @@ export default function GameRoomPage() {
                       </span>
                     )}
                   </h3>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="-mt-5 space-y-3 max-h-96 overflow-y-auto">
                     {(game.winners || []).map((winner) => (
                       <div
                         key={winner.id}
@@ -962,7 +961,7 @@ export default function GameRoomPage() {
                 className={`${getBallColor(getBingoLetter(game.currentBall))} ${isHost ? "w-[260px] h-[260px]" : "w-[200px] h-[200px]"} rounded-full flex items-center justify-center shadow-lg`}
               >
                 <div
-                  className={`bg-white ${isHost ? "w-[210px] h-[210px]" : "w-[160px] h-[160px]"} rounded-full flex flex-col items-center justify-center`}
+                  className={`bg-white ${isHost ? "w-[210px] h-[210px]" : "w-40 h-40"} rounded-full flex flex-col items-center justify-center`}
                 >
                   <span
                     className={`${isHost ? "text-7xl" : "text-5xl"} font-bold`}
