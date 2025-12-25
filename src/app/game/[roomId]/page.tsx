@@ -722,21 +722,23 @@ export default function GameRoomPage() {
       {/* Win Notification Modal */}
       {newWinners.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="p-6 max-w-md w-[90%] space-y-4">
-            <h2 className="text-2xl font-bold text-center">BINGO!</h2>
-            <div className="space-y-2">
-              {newWinners.map((winner) => (
-                <div key={winner.id} className="flex flex-col gap-8 p-2 items-center justify-center">
-                  <div className='flex flex-row gap-2'>
-                    <Image src="/shiro.png" alt="Shiro!" width={100} height={100} />
-                    <Image src="/nabi.png" alt="Nabi!" width={100} height={100} />
-                  </div>
+          <Card className="p-6 max-w-md w-[90%] h-[60%] overflow-scroll flex flex-col justify-between gap-4">
+            <div className='flex flex-col gap-4'>
+              <h2 className="text-2xl font-bold text-center pb-4">BINGO!</h2>
+              <div className="space-y-2">
+                {newWinners.map((winner) => (
+                  <div key={winner.id} className="flex flex-col gap-8 p-2 items-center justify-center">
+                    <div className='flex flex-row gap-2'>
+                      <Image src="/shiro.png" alt="Shiro!" width={100} height={100} />
+                      <Image src="/nabi.png" alt="Nabi!" width={100} height={100} />
+                    </div>
 
-                  <p className='text-2xl text-center'>
-                    <strong className='text-green-500'>{winner.username}</strong> has hit Bingo!
-                  </p>
-                </div>
-              ))}
+                    <p className='text-2xl text-center'>
+                      <strong className='text-green-500'>{winner.username}</strong> has hit Bingo!
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
             <Button
               onClick={handleDismissWinners}
