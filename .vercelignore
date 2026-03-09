@@ -1,0 +1,4 @@
+# Exclude the Expo mobile app from Vercel deployments.
+# Vercel deploys the Next.js app at the repo root; the mobile/ directory
+# is only needed for local Expo builds and should not be uploaded.
+mobile/
